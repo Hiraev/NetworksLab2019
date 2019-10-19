@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <ncurses.h>
 
 #include "../common/common.h"
 
@@ -18,6 +19,8 @@ void *terminal_reader(void *args);
 void read_message(int fd);
 
 char terminal_buff[MSG_BUFF_SIZE];
+
+pthread_mutex_t lock;
 
 int main(int argc, char *argv[]) {
     int sockfd, n;
@@ -71,6 +74,12 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    //Init mutex
+    if (pthread_mutex_init(&lock, NULL) != 0) {
+        perror("ERROR creating mutex for clients list");
+        exit(1);
+    }
+
     pthread_t thread_id;
     pthread_create(&thread_id, NULL, terminal_reader, &sockfd);
 
@@ -78,28 +87,55 @@ int main(int argc, char *argv[]) {
         /* Now read server response */
         read_message(sockfd);
     }
+    endwin();
     return 0;
 }
 
 void *terminal_reader(void *args) {
     ssize_t n;
+    size_t len = 0;
+    initscr();
     int sockfd = *(int *) args;
     while (1) {
+        noecho();
         bzero(terminal_buff, MSG_BUFF_SIZE);
-        fgets(terminal_buff, MSG_BUFF_SIZE, stdin);
+        char sym = ' ';
+        while (sym != '\n' && len != MSG_BUFF_SIZE) {
+            int key_code  = getch();
+            sym = (char) key_code;
+            if (key_code == 127 || key_code == 37) {
+                printw("%d ", sym);
+                delch();
+
+            } else {
+                terminal_buff[len] = sym;
+                len++;
+            }
+        }
+
+        echo();
+        clrtoeol();
+        refresh();
         replace(terminal_buff, MSG_BUFF_SIZE, '\n', '\0');
         /* Send message to the server */
-        size_t len = strlen(terminal_buff) + 1;
         n = write(sockfd, &len, MSG_SIZE_VAL); // Передаем размер сообщения
         if (n <= 0) {
             perror("ERROR writing to socket");
+            endwin();
             exit(1);
         }
         n = write(sockfd, &terminal_buff, len); // Передаем само сообщение
         if (n <= 0) {
             perror("ERROR writing to socket");
+            endwin();
             exit(1);
         }
+        attron(A_BOLD);
+        printw("You : %s", terminal_buff);
+        attroff(A_BOLD);
+        insertln();
+        move(0, 0);
+        len = 0;
     }
 }
 
@@ -110,13 +146,21 @@ void read_message(int fd) {
     n = readn(fd, (char *) &msg_size, MSG_SIZE_VAL);
     if (n <= 0) { // Клиент умер/отключился
         perror("ERROR reading from socket");
+        endwin();
         exit(1);
     } else {
         // Читаем само сообщение
         char *msg = malloc(sizeof(char) * msg_size);
         //Читаем то кол-во сиволов, которое указано в заголовке сообщения
         readn(fd, msg, msg_size);
-        printf("\r%s\n", msg);
+        printw("\r%s", msg);
+        move(0, 0);
+        insertln();
+        refresh();
         free(msg);
     }
+}
+
+int handle_key(int key_code) {
+
 }
