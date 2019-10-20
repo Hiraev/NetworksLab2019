@@ -13,12 +13,15 @@
 #include "../common/common.h"
 
 #define MSG_BUFF_SIZE 512
+#define DEL_CODE 127
 
 void *terminal_reader(void *args);
 
 void read_message(int fd);
 
 char terminal_buff[MSG_BUFF_SIZE];
+
+void print_user_input_if_needed();
 
 pthread_mutex_t lock;
 
@@ -101,22 +104,35 @@ void *terminal_reader(void *args) {
         bzero(terminal_buff, MSG_BUFF_SIZE);
         char sym = ' ';
         while (sym != '\n' && len != MSG_BUFF_SIZE) {
-            int key_code  = getch();
+            int key_code = getch();
             sym = (char) key_code;
-            if (key_code == 127 || key_code == 37) {
-                printw("%d ", sym);
-                delch();
-
-            } else {
+            if (key_code == DEL_CODE) {
+                if (len > 0) {
+                    move(0, --len);
+                    terminal_buff[len] = '\0';
+                }
+            } else if (key_code > 31) {
                 terminal_buff[len] = sym;
                 len++;
             }
+            if (key_code > 31) {
+                pthread_mutex_lock(&lock);
+                clrtoeol();
+                refresh();
+                printw("\r%s", terminal_buff);
+                pthread_mutex_unlock(&lock);
+            }
         }
-
+        if (len == 0) continue;
+        pthread_mutex_lock(&lock);
         echo();
         clrtoeol();
         refresh();
-        replace(terminal_buff, MSG_BUFF_SIZE, '\n', '\0');
+        attron(A_BOLD);
+        printw("\rYou : %s", terminal_buff);
+        attroff(A_BOLD);
+        insertln();
+        move(0, 0);
         /* Send message to the server */
         n = write(sockfd, &len, MSG_SIZE_VAL); // Передаем размер сообщения
         if (n <= 0) {
@@ -130,11 +146,7 @@ void *terminal_reader(void *args) {
             endwin();
             exit(1);
         }
-        attron(A_BOLD);
-        printw("You : %s", terminal_buff);
-        attroff(A_BOLD);
-        insertln();
-        move(0, 0);
+        pthread_mutex_unlock(&lock);
         len = 0;
     }
 }
@@ -150,17 +162,24 @@ void read_message(int fd) {
         exit(1);
     } else {
         // Читаем само сообщение
-        char *msg = malloc(sizeof(char) * msg_size);
+        char *msg = calloc((msg_size + 1), sizeof(char));
+        bzero(msg, msg_size);
         //Читаем то кол-во сиволов, которое указано в заголовке сообщения
         readn(fd, msg, msg_size);
+        pthread_mutex_lock(&lock);
         printw("\r%s", msg);
         move(0, 0);
         insertln();
         refresh();
+        print_user_input_if_needed();
+        pthread_mutex_unlock(&lock);
         free(msg);
     }
 }
 
-int handle_key(int key_code) {
-
+void print_user_input_if_needed() {
+    if (strlen(terminal_buff) > 0) {
+        printw("%s", terminal_buff);
+        refresh();
+    }
 }
