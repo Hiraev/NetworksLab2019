@@ -8,16 +8,32 @@
 #include <unistd.h>
 #include <string.h>
 #include <pthread.h>
+#include <readline/readline.h>
 
 #include "../common/common.h"
+#include "../../libs/csi.h"
 
 #define MSG_BUFF_SIZE 512
+
+#define RESTORE_CURSOR  printf("\x1B[u"); \
+                        printf(CSI_RCP);
+
+#define SAVE_CURSOR     printf("\x1B[s"); \
+                        printf(CSI_SCP); 
+#define CURSOR_UP       printf(CSI_CUU(2));
+#define CURSOR_DOWN     printf(CSI_CUD(2));
+
+#define RESET_STYLE     printf(CSI_UTIL_RESET);
+#define START_GREEN     printf(CSI_UTIL_CLR_GREEN);
+#define ERASE_LINE      printf(CSI_CHA(0)); printf(CSI_EL(0));
 
 void *terminal_reader(void *args);
 
 void read_message(int fd);
 
 char terminal_buff[MSG_BUFF_SIZE];
+
+void print_chat_area();
 
 int main(int argc, char *argv[]) {
     int sockfd, n;
@@ -71,6 +87,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
+    print_chat_area();
     pthread_t thread_id;
     pthread_create(&thread_id, NULL, terminal_reader, &sockfd);
 
@@ -86,7 +103,8 @@ void *terminal_reader(void *args) {
     int sockfd = *(int *) args;
     while (1) {
         bzero(terminal_buff, MSG_BUFF_SIZE);
-        fgets(terminal_buff, MSG_BUFF_SIZE, stdin);
+        char *line = readline("");
+        strcpy(terminal_buff, line);
         replace(terminal_buff, MSG_BUFF_SIZE, '\n', '\0');
         /* Send message to the server */
         size_t len = strlen(terminal_buff) + 1;
@@ -116,7 +134,16 @@ void read_message(int fd) {
         char *msg = malloc(sizeof(char) * msg_size);
         //Читаем то кол-во сиволов, которое указано в заголовке сообщения
         readn(fd, msg, msg_size);
-        printf("\r%s\n", msg);
+        CURSOR_UP
+        START_GREEN
+        printf("\n%s\n", msg);
+        RESET_STYLE
+        RESTORE_CURSOR
+        rl_forced_update_display();
         free(msg);
     }
+}
+
+void print_chat_area() {
+    printf("==Chat=======\n\n\n\n\n\n\n\n\n\n\n=============\n");
 }
