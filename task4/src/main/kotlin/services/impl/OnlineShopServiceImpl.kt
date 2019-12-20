@@ -75,10 +75,13 @@ class OnlineShopServiceImpl(
                     val msg = when (answer.code) {
                         1 -> "Can't find id"
                         2 -> "Permission denied"
-                        3 -> "User with than name already registered"
+                        3 -> "User with that name already registered"
                         4 -> "Goods already exists"
                         5 -> "Can't buy. Bucket is empty"
                         6 -> "Can't login"
+                        7 -> "You are already logged in"
+                        500 -> "Internal server error"
+                        -1 -> exitProcess(1)
                         else -> "Undefined error"
                     }
                     logger.info("Gor error: $msg")

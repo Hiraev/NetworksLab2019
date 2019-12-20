@@ -10,7 +10,7 @@ object PacketBuilder {
         CommandBody.GetAllGoods -> byteArrayOf(1)
         is CommandBody.PutGoodsToWishList -> byteArrayOf(2) + commandBody.id.toByteArray()
         is CommandBody.Purchase -> byteArrayOf(3) + commandBody.cardNumber.toByteArray()
-        is CommandBody.AddGoods -> byteArrayOf(6) + 1.toByteArray() + getGoodsByteArray(commandBody)
+        is CommandBody.AddGoods -> byteArrayOf(6) + getGoodsByteArray(commandBody)
         is CommandBody.Remove -> byteArrayOf(7) + commandBody.id.toByteArray()
         is CommandBody.Register -> byteArrayOf(4) + getNameAndPassword(commandBody.name, commandBody.password)
         is CommandBody.Login -> byteArrayOf(5) + getNameAndPassword(commandBody.name, commandBody.password)
