@@ -1,7 +1,9 @@
 package services
 
+import model.Host
+
 interface OnlineShopService {
 
-    fun open()
+    fun open(host: Host)
 
 }

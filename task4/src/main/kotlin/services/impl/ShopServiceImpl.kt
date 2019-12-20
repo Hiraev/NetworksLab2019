@@ -1,5 +1,6 @@
 package services.impl
 
+import model.Host
 import model.shop.Response
 import org.koin.core.logger.Logger
 import services.ShopService
@@ -16,8 +17,8 @@ class ShopServiceImpl(
     private lateinit var outputStream: BufferedOutputStream
     private lateinit var inputStream: BufferedInputStream
 
-    override fun connect() {
-        connection = Socket("172.20.10.6", 5000)
+    override fun connect(host: Host) {
+        connection = Socket(host.host, host.port)
         if (connection.isConnected) {
             logger.info("Successfully connected")
         } else {

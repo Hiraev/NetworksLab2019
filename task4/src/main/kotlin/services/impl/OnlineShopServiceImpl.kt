@@ -1,5 +1,6 @@
 package services.impl
 
+import model.Host
 import model.commans.CommandBody
 import model.shop.Response
 import org.koin.core.logger.Logger
@@ -7,6 +8,7 @@ import services.CommandsService
 import services.OnlineShopService
 import services.ShopService
 import utils.PacketBuilder
+import kotlin.system.exitProcess
 
 class OnlineShopServiceImpl(
     private val logger: Logger,
@@ -14,13 +16,14 @@ class OnlineShopServiceImpl(
     private val shopService: ShopService
 ) : OnlineShopService {
 
-    override fun open() {
+    override fun open(host: Host) {
         logger.info("Connecting to the online shop")
-        shopService.connect()
         try {
+            shopService.connect(host)
             logger.info("Successfully connected to server")
         } catch (t: Throwable) {
             logger.error("Can't connect to server cause: ${t.localizedMessage}")
+            exitProcess(1)
         }
         loop@ while (true) {
             val command = commandsService.readCommand()
