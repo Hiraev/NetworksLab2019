@@ -4,7 +4,7 @@ import model.Host
 import model.shop.Response
 import org.koin.core.logger.Logger
 import services.ShopService
-import utils.PacketBuilder
+import utils.PacketParser
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.net.Socket
@@ -37,12 +37,15 @@ class ShopServiceImpl(
         outputStream.flush()
         logger.info("Packet sent, waitForGoods: $waitForGoods")
         val result = getResult()
-        if (result is Response.Failed) return Response.Failed
+        if (result is Response.Failed) return result
         return if (waitForGoods) getGoods() else result
     }
 
-    private fun getResult() = if (inputStream.read() == 0) Response.Success else Response.Failed
+    private fun getResult(): Response {
+        val result = inputStream.read()
+        return if (result == 0) Response.Success else Response.Failed(result)
+    }
 
-    private fun getGoods() = Response.Goods(PacketBuilder.parseAllGoods(inputStream))
+    private fun getGoods() = Response.Goods(PacketParser.parseAllGoods(inputStream))
 
 }

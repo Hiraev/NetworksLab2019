@@ -4,7 +4,7 @@ sealed class Response {
 
     object Success : Response()
 
-    object Failed : Response()
+    class Failed(val code: Int) : Response()
 
     class Goods(val goods: List<model.shop.Goods>) : Response()
 

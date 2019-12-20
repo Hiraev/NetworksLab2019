@@ -27,22 +27,62 @@ class OnlineShopServiceImpl(
         }
         loop@ while (true) {
             val command = commandsService.readCommand()
-            if (command is CommandBody.Undefined) {
-                logger.info("Undefined command")
-                continue@loop
-            } else if (command is CommandBody.Purchase) {
-                logger.info("Card number is : ${command.cardNumber}")
-                logger.info("Length : ${command.cardNumber.toByteArray()}")
+
+            when (command) {
+                is CommandBody.Undefined -> {
+                    logger.info("Undefined command")
+                    continue@loop
+                }
+                is CommandBody.Purchase -> {
+                    logger.info("Card number is : ${command.cardNumber}")
+                }
+                is CommandBody.AddGoods -> {
+                    logger.info("Added: {${command.id}, ${command.name}, ${command.price}}")
+                }
+                is CommandBody.Remove -> {
+                    logger.info("Removed: ${command.id}")
+                }
+                is CommandBody.Exit -> {
+                    logger.info("Exited")
+                }
+                is CommandBody.PutGoodsToWishList -> {
+                    logger.info("Put in bucket: ${command.id}")
+                }
+                is CommandBody.GetAllGoods -> {
+                    logger.info("Get all gods list")
+                }
+                is CommandBody.Register -> {
+                    logger.info("Register")
+                }
+                is CommandBody.Login -> {
+                    logger.info("Login")
+                }
             }
+
             val waitForGoods = command is CommandBody.GetAllGoods
-            logger.info("Read command: $command")
+
             val packet = PacketBuilder.commandToByteArray(command)
+
             when (val answer = shopService.sendPacket(packet, waitForGoods)) {
                 is Response.Goods -> {
                     logger.info("Got ${answer.goods.size} goods")
                     logger.info(answer.goods.toString())
                 }
-                else -> logger.info(answer.toString())
+                is Response.Success -> {
+                    logger.info("Success")
+                }
+                is Response.Failed -> {
+                    val msg = when (answer.code) {
+                        1 -> "Can't find id"
+                        2 -> "Permission denied"
+                        3 -> "User with than name already registered"
+                        4 -> "Goods already exists"
+                        5 -> "Can't buy. Bucket is empty"
+                        6 -> "Can't login"
+                        else -> "Undefined error"
+                    }
+                    logger.info("Gor error: $msg")
+                }
             }
         }
     }
